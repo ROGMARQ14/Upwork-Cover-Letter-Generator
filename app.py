@@ -89,30 +89,8 @@ I’m not an agency... I dedicate much personal attention to each client... I pr
 - Almost 100 projects and over 1,300+ hours invested
 """
 
-seven_step_system = """
-**The 7-Step Proposal System**
-
-**Step 1: Personalize Your Hook and Twist**
-The first line must grab attention (hook) and show you understand the deeper problem (twist). Avoid generic templates. Research the client's name if possible. The twist shows *why* they need the job done. Example: A client doesn't just need images; they need sales.
-
-**Step 2: Save the Day**
-Introduce yourself as the solution *after* the hook. Keep it client-focused (90% them, 10% you). Be short and sweet.
-
-**Step 3: Establish Authority with Social Proof**
-Use short, powerful snippets from your best client reviews. Keep them relevant to the client's industry. Maximum of three.
-
-**Step 4: Showcase Results, Not Just Examples**
-Demonstrate tangible results. Use relevant case studies. Don't just send a portfolio link; explain the context and the impact (e.g., "doubled conversion").
-
-**Step 5: Guide the Client with a Call to Action (CTA)**
-Tell the client exactly what to do next. Be explicit and personalize it. Example: "To get started, just click the green 'Accept' button, John."
-
-**Step 6: Leverage the Power of the "P.S."**
-Most people read the P.S. first. Use it to reinforce your message, create urgency, add a secondary CTA, or provide an extra personalized thought (e.g., "P.S. I looked at your competitor and have some ideas...").
-
-**Step 7: The Final Action**
-Send it. Trust the system.
-"""
+# This is the old, flawed 7-step system description. We will use a more direct prompt now.
+# seven_step_system = "..." # Removed for clarity.
 
 # --- API Key Configuration ---
 
@@ -216,7 +194,6 @@ with col1:
         "Google": ["gemini-1.5-pro-latest", "gemini-1.5-flash-latest"] # Placeholder for future models
     }
 
-    # Simplified model names for display
     model_display_names = {
         "gpt-4o": "OpenAI: GPT-4o",
         "gpt-4o-mini": "OpenAI: GPT-4o Mini",
@@ -243,29 +220,50 @@ with col2:
             st.warning("Please provide both the Job Title and Job Description.")
         else:
             with st.spinner(f"Crafting your cover letter with {model_display_names.get(selected_model_key, selected_model_key)}..."):
-                # Construct the comprehensive prompt
+                # --- NEW, IMPROVED PROMPT ---
                 prompt = f"""
-                You are an expert Upwork proposal writer. Your task is to generate a professional, concise, and highly effective cover letter for an Upwork job application.
+                You are an expert Upwork proposal writer, acting as a consultant. Your goal is to write a cover letter that is **100% client-focused**. It should feel like a direct, thoughtful response to their specific needs, not a generic sales pitch.
 
-                **My Professional Profile:**
-                {user_profile}
+                **CRITICAL RULE:** The cover letter must be about the **client's problem** and how I am the unique solution. **DO NOT** just list my skills or accomplishments. Instead, connect my specific experiences directly to the tasks and goals mentioned in the job description.
 
-                **The 7-Step System to Follow:**
-                {seven_step_system}
-
-                **Job Details:**
+                **Here is the client's job post:**
                 - **Job Title:** {job_title}
                 - **Job Description:** {job_description}
 
-                **Instructions for the Cover Letter:**
-                1.  **Strictly follow the 7-step system.**
-                2.  **Personalize heavily:** Tailor the letter to the specific project, highlighting relevant skills and experience from my profile that are mentioned in the job description.
-                3.  **Focus on client benefits:** Explain HOW my skills will benefit the client and their project. Don't just list skills.
-                4.  **Show results:** Where relevant, use specific numbers and results from my profile to demonstrate impact.
-                5.  **Maintain a professional and confident tone.** Proofread carefully for typos and grammatical errors.
-                6.  **Use emojis responsibly:** Add a few emojis, especially in the opening lines, to be engaging but not annoying.
-                7.  **Create an elevator pitch:** Convince the client that I am the perfect fit for this specific job.
-                8.  **Output only the cover letter content**, ready to be copied and pasted. Do not include any extra commentary before or after the letter.
+                **Here is my professional background (use this as a database of facts to draw from, NOT a template to copy):**
+                {user_profile}
+
+                **Follow this specific thought process and structure:**
+
+                **Step 1: The Hook & Twist (First 1-2 lines)**
+                - Read the job description carefully. What is the client's *real* goal? What is the underlying business problem they are trying to solve?
+                - Start with a hook that immediately addresses that core problem. Show you've thought about their situation. Use an emoji or two here to be personable.
+                - Example: If they need SEO for a new SaaS, the real goal isn't just "ranking," it's "acquiring users and reducing CAC." Your hook should reflect that deeper understanding.
+
+                **Step 2: The Bridge (1 paragraph)**
+                - Briefly introduce yourself as the solution to the problem you just identified.
+                - Connect 1-2 of your MOST RELEVANT experiences or skills from my profile directly to their needs.
+                - Example: "Seeing that you need to improve your SaaS platform's organic acquisition, my experience reducing CAC by 40% for a similar platform by optimizing their content strategy comes to mind."
+
+                **Step 3: Provide Evidence (Bulleted list or short paragraph)**
+                - Back up your claim from Step 2.
+                - Pull 1-2 of the most relevant, quantifiable results (case studies, wins) from my profile that mirror the client's goals.
+                - If they are a local business, use my local business case study. If they are SaaS, use my SaaS results. Be highly selective.
+                - You can also optionally include a highly relevant snippet from a client testimonial.
+
+                **Step 4: The Call to Action (1 line)**
+                - The goal is to start a conversation, not close a sale.
+                - Avoid generic or pushy phrases like "click the accept button."
+                - Suggest a next step. Examples: "Would you be open to a brief chat next week to discuss your goals?" or "I have a few initial ideas for your strategy. Happy to share them on a quick call."
+
+                **Step 5: The P.S. (Optional but powerful)**
+                - Add a final, personalized touch. This shows you've done extra thinking.
+                - Example: "P.S. I noticed your main competitor is [Competitor Name]. I have a specific idea on how we could improve your [specific area] to gain an edge." (If you can't find a competitor, make a more general but insightful P.S.).
+
+                **Final Output Instructions:**
+                - Keep the tone professional, confident, and consultative.
+                - The final letter should be concise and easy to read.
+                - **Output ONLY the cover letter content.** No extra text before or after.
                 """
 
                 cover_letter = None
