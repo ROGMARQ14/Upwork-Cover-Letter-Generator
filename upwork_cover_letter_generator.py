@@ -6,14 +6,12 @@ try:
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
-    st.error("Requests library not available")
 
 try:
     from bs4 import BeautifulSoup
     BS4_AVAILABLE = True
 except ImportError:
     BS4_AVAILABLE = False
-    st.error("BeautifulSoup not available")
 
 # Configure page
 st.set_page_config(
@@ -29,7 +27,6 @@ st.markdown("Generate compelling, professional cover letters for Upwork job post
 def check_secret_exists(key):
     """Check if a secret exists in Streamlit Cloud"""
     try:
-        # Try multiple ways to access secrets
         if hasattr(st.secrets, key):
             value = getattr(st.secrets, key)
             return value is not None and value != ""
@@ -53,30 +50,6 @@ def get_secret_value(key):
     except Exception:
         return None
 
-def test_imports():
-    """Test if all required imports work"""
-    import_status = {}
-    
-    try:
-        import openai
-        import_status["OpenAI"] = "✅ Available"
-    except ImportError as e:
-        import_status["OpenAI"] = f"❌ Not available: {e}"
-    
-    try:
-        import anthropic
-        import_status["Anthropic"] = "✅ Available"
-    except ImportError as e:
-        import_status["Anthropic"] = f"❌ Not available: {e}"
-        
-    try:
-        import google.generativeai as genai
-        import_status["Gemini"] = "✅ Available"
-    except ImportError as e:
-        import_status["Gemini"] = f"❌ Not available: {e}"
-    
-    return import_status
-
 def get_available_providers():
     """Check which AI providers have API keys configured"""
     providers = {}
@@ -90,8 +63,8 @@ def get_available_providers():
                 "gpt-4o-mini": "GPT-4o Mini",
                 "gpt-3.5-turbo": "GPT-3.5 Turbo"
             }
-    except Exception as e:
-        st.sidebar.error(f"OpenAI setup error: {e}")
+    except Exception:
+        pass  # Silently fail
     
     # Test Anthropic
     try:
@@ -101,8 +74,8 @@ def get_available_providers():
                 "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
                 "claude-3-haiku-20240307": "Claude 3 Haiku"
             }
-    except Exception as e:
-        st.sidebar.error(f"Anthropic setup error: {e}")
+    except Exception:
+        pass  # Silently fail
     
     # Test Gemini
     try:
@@ -112,19 +85,16 @@ def get_available_providers():
                 "gemini-1.5-pro": "Gemini 1.5 Pro",
                 "gemini-1.5-flash": "Gemini 1.5 Flash"
             }
-    except Exception as e:
-        st.sidebar.error(f"Gemini setup error: {e}")
+    except Exception:
+        pass  # Silently fail
     
     return providers
 
 def fetch_job_details(url):
     """Fetch job title, summary, and description from Upwork job URL"""
     if not REQUESTS_AVAILABLE or not BS4_AVAILABLE:
-        return {
-            'title': "Please enter manually",
-            'summary': "Please enter manually", 
-            'description': "Please enter manually"
-        }
+        st.warning("⚠️ URL fetching not available. Please use manual entry below.")
+        return None
     
     try:
         headers = {
@@ -290,47 +260,30 @@ Please generate a cover letter following the above structure and rules."""
             return response.text
             
     except Exception as e:
-        return f"Error generating cover letter: {str(e)}"
+        return f"Error generating cover letter: {str(e)}. Please check your API configuration."
 
 def main():
     """Main app interface"""
-    
-    # Debug section
-    with st.expander("🔧 Debug Info", expanded=False):
-        st.write("**Import Status:**")
-        import_status = test_imports()
-        for service, status in import_status.items():
-            st.write(f"- {service}: {status}")
-        
-        st.write("**Secrets Available:**")
-        secrets_info = {
-            "OPENAI_API_KEY": "✅ Configured" if check_secret_exists("OPENAI_API_KEY") else "❌ Not configured",
-            "ANTHROPIC_API_KEY": "✅ Configured" if check_secret_exists("ANTHROPIC_API_KEY") else "❌ Not configured", 
-            "GEMINI_API_KEY": "✅ Configured" if check_secret_exists("GEMINI_API_KEY") else "❌ Not configured"
-        }
-        for service, status in secrets_info.items():
-            st.write(f"- {service}: {status}")
-            
-        # Show secret values (first few characters only for security)
-        st.write("**Secret Values (first 10 chars):**")
-        for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"]:
-            value = get_secret_value(key)
-            if value:
-                st.write(f"- {key}: {value[:10]}...")
-            else:
-                st.write(f"- {key}: None")
     
     # Check available providers
     available_providers = get_available_providers()
     
     if not available_providers:
         st.error("⚠️ No AI providers configured!")
-        st.info("Please add at least one API key in Streamlit Cloud secrets:")
+        st.info("Please configure at least one API key in your Streamlit Cloud app settings under the 'Secrets' tab:")
+        
+        st.markdown("**Required format:**")
         st.code("""
 OPENAI_API_KEY = "your_openai_key_here"
 ANTHROPIC_API_KEY = "your_anthropic_key_here"
 GEMINI_API_KEY = "your_gemini_key_here"
-        """)
+        """, language="toml")
+        
+        st.markdown("**How to get API keys:**")
+        st.markdown("- **OpenAI**: [platform.openai.com](https://platform.openai.com/api-keys)")
+        st.markdown("- **Anthropic**: [console.anthropic.com](https://console.anthropic.com/)")
+        st.markdown("- **Gemini**: [aistudio.google.com](https://aistudio.google.com/)")
+        
         st.stop()
     
     # Sidebar for AI model selection
@@ -357,6 +310,16 @@ GEMINI_API_KEY = "your_gemini_key_here"
         5. **Clear CTA** - Tell them next step
         6. **P.S.** - Add unexpected value
         """)
+        
+        # Add usage tips
+        with st.expander("💡 Usage Tips"):
+            st.markdown("""
+            - Keep proposals under 250 words
+            - Focus 90% on client needs, 10% on you
+            - Use 3-5 professional emojis total
+            - Never mention rates unless asked
+            - Be conversational, not formal
+            """)
     
     # Main content area
     col1, col2 = st.columns([1, 1])
@@ -364,10 +327,12 @@ GEMINI_API_KEY = "your_gemini_key_here"
     with col1:
         st.header("📋 Job Details")
         
+        # URL input section
+        st.subheader("Option 1: Fetch from URL")
         job_url = st.text_input(
             "Upwork Job URL:",
             placeholder="https://www.upwork.com/jobs/...",
-            help="Paste the full Upwork job posting URL"
+            help="Paste the full Upwork job posting URL to auto-extract details"
         )
         
         if st.button("🔍 Fetch Job Details", type="primary"):
@@ -378,56 +343,77 @@ GEMINI_API_KEY = "your_gemini_key_here"
                 if job_details:
                     st.session_state.job_details = job_details
                     st.success("✅ Job details fetched successfully!")
+                else:
+                    st.warning("Could not fetch details. Please use manual entry below.")
             else:
                 st.warning("Please enter a job URL first.")
         
-        # Manual entry option
-        st.markdown("### Or enter manually:")
+        st.markdown("---")
+        
+        # Manual entry section
+        st.subheader("Option 2: Manual Entry")
         manual_title = st.text_input("Job Title:", key="manual_title")
-        manual_summary = st.text_area("Job Summary:", height=100, key="manual_summary")
-        manual_description = st.text_area("Job Description:", height=200, key="manual_description")
+        manual_summary = st.text_area("Job Summary:", height=100, key="manual_summary", 
+                                     help="Brief description or requirements from the job post")
+        manual_description = st.text_area("Job Description:", height=200, key="manual_description",
+                                         help="Full job description with requirements and details")
         
-        if st.button("📝 Use Manual Entry"):
-            st.session_state.job_details = {
-                'title': manual_title,
-                'summary': manual_summary,
-                'description': manual_description
-            }
-            st.success("✅ Manual job details saved!")
+        if st.button("📝 Use Manual Entry", type="secondary"):
+            if manual_title or manual_description:
+                st.session_state.job_details = {
+                    'title': manual_title,
+                    'summary': manual_summary,
+                    'description': manual_description
+                }
+                st.success("✅ Manual job details saved!")
+            else:
+                st.warning("Please enter at least a job title and description.")
         
-        # Display and edit job details if available
+        # Display and edit current job details
         if hasattr(st.session_state, 'job_details'):
             job_data = st.session_state.job_details
             
+            st.markdown("---")
             st.subheader("Current Job Information")
-            with st.expander("📝 Edit Job Details", expanded=True):
+            with st.expander("📝 Review & Edit Details", expanded=False):
                 edited_title = st.text_input("Job Title:", value=job_data.get('title', ''), key="edit_title")
                 edited_summary = st.text_area("Summary:", value=job_data.get('summary', ''), height=100, key="edit_summary")
                 edited_description = st.text_area("Description:", value=job_data.get('description', ''), height=200, key="edit_desc")
                 
-                st.session_state.job_details = {
-                    'title': edited_title,
-                    'summary': edited_summary,
-                    'description': edited_description
-                }
+                if st.button("💾 Update Details"):
+                    st.session_state.job_details = {
+                        'title': edited_title,
+                        'summary': edited_summary,
+                        'description': edited_description
+                    }
+                    st.success("✅ Details updated!")
+                    st.experimental_rerun()
     
     with col2:
         st.header("✍️ Generated Cover Letter")
         
-        if st.button("🚀 Generate Cover Letter", type="primary"):
+        if st.button("🚀 Generate Cover Letter", type="primary", use_container_width=True):
             if hasattr(st.session_state, 'job_details'):
-                with st.spinner(f"Generating cover letter with {available_providers[selected_provider][selected_model]}..."):
-                    cover_letter = generate_cover_letter(
-                        st.session_state.job_details,
-                        selected_provider,
-                        selected_model
-                    )
-                    
-                if cover_letter:
-                    st.session_state.cover_letter = cover_letter
-                    st.success("✅ Cover letter generated successfully!")
+                job_data = st.session_state.job_details
+                
+                # Validate that we have meaningful job details
+                if not job_data.get('title') and not job_data.get('description'):
+                    st.error("Please provide at least a job title and description before generating.")
+                else:
+                    with st.spinner(f"Generating cover letter with {available_providers[selected_provider][selected_model]}..."):
+                        cover_letter = generate_cover_letter(
+                            st.session_state.job_details,
+                            selected_provider,
+                            selected_model
+                        )
+                        
+                    if cover_letter and not cover_letter.startswith("Error"):
+                        st.session_state.cover_letter = cover_letter
+                        st.success("✅ Cover letter generated successfully!")
+                    else:
+                        st.error(f"Failed to generate cover letter: {cover_letter}")
             else:
-                st.warning("Please enter job details first.")
+                st.warning("Please enter job details first using one of the options on the left.")
         
         # Display generated cover letter
         if hasattr(st.session_state, 'cover_letter'):
@@ -437,19 +423,41 @@ GEMINI_API_KEY = "your_gemini_key_here"
                 "Generated Cover Letter:",
                 value=st.session_state.cover_letter,
                 height=400,
-                help="Copy this text and paste it into your Upwork proposal"
+                help="Copy this text and paste it into your Upwork proposal",
+                key="final_cover_letter"
             )
             
-            # Word count
-            word_count = len(cover_letter_text.split())
-            if word_count > 250:
-                st.warning(f"⚠️ Word count: {word_count} (Recommended: ≤250 words)")
-            else:
-                st.success(f"✅ Word count: {word_count}/250")
+            # Word count and analysis
+            col_a, col_b = st.columns(2)
+            with col_a:
+                word_count = len(cover_letter_text.split())
+                if word_count > 250:
+                    st.warning(f"⚠️ Word count: {word_count} (Recommended: ≤250)")
+                else:
+                    st.success(f"✅ Word count: {word_count}/250")
+            
+            with col_b:
+                # Count emojis
+                emoji_count = sum(1 for char in cover_letter_text if ord(char) > 127 and 
+                                ord(char) < 128512)  # Rough emoji detection
+                if emoji_count >= 3 and emoji_count <= 5:
+                    st.success(f"✅ Emojis: {emoji_count}/3-5")
+                else:
+                    st.info(f"📊 Emojis: {emoji_count} (Recommended: 3-5)")
+            
+            # Copy button hint
+            st.info("💡 **Tip**: Select all text above (Ctrl+A) and copy (Ctrl+C) to use in your Upwork proposal")
 
     # Footer
     st.markdown("---")
-    st.markdown("Built for professional Upwork freelancers | Follow the 7-step system for maximum impact")
+    st.markdown(
+        """
+        <div style='text-align: center; color: #666; font-size: 14px;'>
+            <p>Built for professional Upwork freelancers | Follow the 7-step system for maximum impact</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
