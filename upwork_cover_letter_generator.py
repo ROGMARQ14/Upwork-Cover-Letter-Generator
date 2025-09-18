@@ -268,37 +268,42 @@ def main():
     # Check available providers
     available_providers = get_available_providers()
     
-    if not available_providers:
-        st.error("⚠️ No AI providers configured!")
-        st.info("Please configure at least one API key in your Streamlit Cloud app settings under the 'Secrets' tab:")
-        
-        st.markdown("**Required format:**")
-        st.code("""
-OPENAI_API_KEY = "your_openai_key_here"
-ANTHROPIC_API_KEY = "your_anthropic_key_here"
-GEMINI_API_KEY = "your_gemini_key_here"
-        """, language="toml")
-        
-        st.markdown("**How to get API keys:**")
-        st.markdown("- **OpenAI**: [platform.openai.com](https://platform.openai.com/api-keys)")
-        st.markdown("- **Anthropic**: [console.anthropic.com](https://console.anthropic.com/)")
-        st.markdown("- **Gemini**: [aistudio.google.com](https://aistudio.google.com/)")
-        
-        st.stop()
-    
+    # Always show the interface, even if no API keys are configured
     # Sidebar for AI model selection
     with st.sidebar:
         st.header("🤖 AI Model Selection")
         
-        provider_options = list(available_providers.keys())
-        selected_provider = st.selectbox("Choose AI Provider:", provider_options)
-        
-        model_options = available_providers[selected_provider]
-        selected_model = st.selectbox(
-            "Choose Model:",
-            options=list(model_options.keys()),
-            format_func=lambda x: model_options[x]
-        )
+        if not available_providers:
+            st.error("⚠️ No AI providers configured!")
+            st.markdown("**Configure API keys in Streamlit Cloud:**")
+            st.markdown("1. Go to your app settings")
+            st.markdown("2. Click 'Secrets' tab")
+            st.markdown("3. Add your API keys:")
+            st.code("""
+OPENAI_API_KEY = "sk-proj-your_key"
+ANTHROPIC_API_KEY = "sk-ant-your_key"
+GEMINI_API_KEY = "AIzaSy-your_key"
+            """, language="toml")
+            
+            st.markdown("**Get API keys:**")
+            st.markdown("- [OpenAI API](https://platform.openai.com/api-keys)")
+            st.markdown("- [Anthropic API](https://console.anthropic.com/)")
+            st.markdown("- [Gemini API](https://aistudio.google.com/)")
+            
+            # Show disabled selections
+            st.selectbox("Choose AI Provider:", ["Please configure API keys first"], disabled=True)
+            st.selectbox("Choose Model:", ["Please configure API keys first"], disabled=True)
+            
+        else:
+            provider_options = list(available_providers.keys())
+            selected_provider = st.selectbox("Choose AI Provider:", provider_options)
+            
+            model_options = available_providers[selected_provider]
+            selected_model = st.selectbox(
+                "Choose Model:",
+                options=list(model_options.keys()),
+                format_func=lambda x: model_options[x]
+            )
         
         st.markdown("---")
         st.markdown("### 📝 7-Step System")
@@ -321,21 +326,22 @@ GEMINI_API_KEY = "your_gemini_key_here"
             - Be conversational, not formal
             """)
     
-    # Main content area
+    # Main content area - ALWAYS SHOW THIS
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.header("📋 Job Details")
         
-        # URL input section
-        st.subheader("Option 1: Fetch from URL")
+        # URL input section - ALWAYS VISIBLE
+        st.subheader("🔗 Paste Upwork Job URL")
         job_url = st.text_input(
             "Upwork Job URL:",
             placeholder="https://www.upwork.com/jobs/...",
-            help="Paste the full Upwork job posting URL to auto-extract details"
+            help="Paste the full Upwork job posting URL to auto-extract details",
+            key="job_url_input"
         )
         
-        if st.button("🔍 Fetch Job Details", type="primary"):
+        if st.button("🔍 Fetch Job Details", type="primary", use_container_width=True):
             if job_url:
                 with st.spinner("Fetching job details..."):
                     job_details = fetch_job_details(job_url)
@@ -350,15 +356,15 @@ GEMINI_API_KEY = "your_gemini_key_here"
         
         st.markdown("---")
         
-        # Manual entry section
-        st.subheader("Option 2: Manual Entry")
+        # Manual entry section - ALWAYS VISIBLE
+        st.subheader("✍️ Manual Entry")
         manual_title = st.text_input("Job Title:", key="manual_title")
         manual_summary = st.text_area("Job Summary:", height=100, key="manual_summary", 
                                      help="Brief description or requirements from the job post")
         manual_description = st.text_area("Job Description:", height=200, key="manual_description",
                                          help="Full job description with requirements and details")
         
-        if st.button("📝 Use Manual Entry", type="secondary"):
+        if st.button("📝 Use Manual Entry", type="secondary", use_container_width=True):
             if manual_title or manual_description:
                 st.session_state.job_details = {
                     'title': manual_title,
@@ -369,12 +375,12 @@ GEMINI_API_KEY = "your_gemini_key_here"
             else:
                 st.warning("Please enter at least a job title and description.")
         
-        # Display and edit current job details
+        # Display current job details if available
         if hasattr(st.session_state, 'job_details'):
             job_data = st.session_state.job_details
             
             st.markdown("---")
-            st.subheader("Current Job Information")
+            st.subheader("📄 Current Job Information")
             with st.expander("📝 Review & Edit Details", expanded=False):
                 edited_title = st.text_input("Job Title:", value=job_data.get('title', ''), key="edit_title")
                 edited_summary = st.text_area("Summary:", value=job_data.get('summary', ''), height=100, key="edit_summary")
@@ -392,32 +398,39 @@ GEMINI_API_KEY = "your_gemini_key_here"
     with col2:
         st.header("✍️ Generated Cover Letter")
         
-        if st.button("🚀 Generate Cover Letter", type="primary", use_container_width=True):
-            if hasattr(st.session_state, 'job_details'):
-                job_data = st.session_state.job_details
-                
-                # Validate that we have meaningful job details
-                if not job_data.get('title') and not job_data.get('description'):
-                    st.error("Please provide at least a job title and description before generating.")
-                else:
-                    with st.spinner(f"Generating cover letter with {available_providers[selected_provider][selected_model]}..."):
-                        cover_letter = generate_cover_letter(
-                            st.session_state.job_details,
-                            selected_provider,
-                            selected_model
-                        )
-                        
-                    if cover_letter and not cover_letter.startswith("Error"):
-                        st.session_state.cover_letter = cover_letter
-                        st.success("✅ Cover letter generated successfully!")
+        # Generate button - show but disable if no API configured
+        if not available_providers:
+            st.button("🚀 Generate Cover Letter", type="primary", use_container_width=True, disabled=True,
+                     help="Please configure API keys in the sidebar first")
+            st.info("👈 Configure your API keys in the sidebar to enable cover letter generation")
+            
+        else:
+            if st.button("🚀 Generate Cover Letter", type="primary", use_container_width=True):
+                if hasattr(st.session_state, 'job_details'):
+                    job_data = st.session_state.job_details
+                    
+                    # Validate that we have meaningful job details
+                    if not job_data.get('title') and not job_data.get('description'):
+                        st.error("Please provide at least a job title and description before generating.")
                     else:
-                        st.error(f"Failed to generate cover letter: {cover_letter}")
-            else:
-                st.warning("Please enter job details first using one of the options on the left.")
+                        with st.spinner(f"Generating cover letter with {available_providers[selected_provider][selected_model]}..."):
+                            cover_letter = generate_cover_letter(
+                                st.session_state.job_details,
+                                selected_provider,
+                                selected_model
+                            )
+                            
+                        if cover_letter and not cover_letter.startswith("Error"):
+                            st.session_state.cover_letter = cover_letter
+                            st.success("✅ Cover letter generated successfully!")
+                        else:
+                            st.error(f"Failed to generate cover letter: {cover_letter}")
+                else:
+                    st.warning("Please enter job details first using one of the options on the left.")
         
-        # Display generated cover letter
+        # Display generated cover letter - ALWAYS SHOW THIS SECTION
         if hasattr(st.session_state, 'cover_letter'):
-            st.subheader("Your Cover Letter")
+            st.subheader("📝 Your Cover Letter")
             
             cover_letter_text = st.text_area(
                 "Generated Cover Letter:",
@@ -437,9 +450,8 @@ GEMINI_API_KEY = "your_gemini_key_here"
                     st.success(f"✅ Word count: {word_count}/250")
             
             with col_b:
-                # Count emojis
-                emoji_count = sum(1 for char in cover_letter_text if ord(char) > 127 and 
-                                ord(char) < 128512)  # Rough emoji detection
+                # Count emojis (simple detection)
+                emoji_count = sum(1 for char in cover_letter_text if ord(char) > 127)
                 if emoji_count >= 3 and emoji_count <= 5:
                     st.success(f"✅ Emojis: {emoji_count}/3-5")
                 else:
@@ -447,6 +459,29 @@ GEMINI_API_KEY = "your_gemini_key_here"
             
             # Copy button hint
             st.info("💡 **Tip**: Select all text above (Ctrl+A) and copy (Ctrl+C) to use in your Upwork proposal")
+        
+        else:
+            # Show placeholder when no cover letter generated yet
+            st.subheader("📝 Your Cover Letter")
+            st.info("👈 Enter job details on the left and click 'Generate Cover Letter' to create your proposal")
+            
+            # Show sample cover letter structure
+            with st.expander("📋 Preview: 7-Step Structure"):
+                st.markdown("""
+                **Sample Cover Letter Structure:**
+                
+                1. **Hook & Twist**: "Hi [Name], I see you need help with [specific need] 🎯..."
+                
+                2. **Save the Day**: "I can solve this by [your solution]..."
+                
+                3. **Social Proof**: "I recently helped a similar client achieve [result with numbers]..."
+                
+                4. **Results Preview**: "For your project, you can expect [specific outcomes]..."
+                
+                5. **Clear CTA**: "Ready to get started? Let's discuss your timeline 👉"
+                
+                6. **P.S.**: "P.S. I noticed [additional value/insight] 💡"
+                """)
 
     # Footer
     st.markdown("---")
