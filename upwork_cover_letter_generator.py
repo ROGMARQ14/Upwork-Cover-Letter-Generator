@@ -1,9 +1,20 @@
 
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
-import os
-import re
+
+# Minimal imports first - add others only if needed
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+    st.error("Requests library not available")
+
+try:
+    from bs4 import BeautifulSoup
+    BS4_AVAILABLE = True
+except ImportError:
+    BS4_AVAILABLE = False
+    st.error("BeautifulSoup not available")
 
 # Configure page
 st.set_page_config(
@@ -12,70 +23,136 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize AI clients only when needed
-@st.cache_resource
-def get_openai_client():
-    """Initialize OpenAI client with error handling"""
-    try:
-        import openai
-        api_key = st.secrets.get("OPENAI_API_KEY")
-        if api_key:
-            return openai.OpenAI(api_key=api_key)
-    except Exception as e:
-        st.error(f"OpenAI initialization error: {e}")
-    return None
-
-@st.cache_resource  
-def get_anthropic_client():
-    """Initialize Anthropic client with error handling"""
-    try:
-        import anthropic
-        api_key = st.secrets.get("ANTHROPIC_API_KEY")
-        if api_key:
-            return anthropic.Anthropic(api_key=api_key)
-    except Exception as e:
-        st.error(f"Anthropic initialization error: {e}")
-    return None
-
-@st.cache_resource
-def get_gemini_client():
-    """Initialize Gemini client with error handling"""
-    try:
-        import google.generativeai as genai
-        api_key = st.secrets.get("GEMINI_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
-            return genai
-    except Exception as e:
-        st.error(f"Gemini initialization error: {e}")
-    return None
-
 # App title
 st.title("✍️ Upwork Cover Letter Generator")
 st.markdown("Generate compelling, professional cover letters for Upwork job postings using AI")
 
+def test_imports():
+    """Test if all required imports work"""
+    import_status = {}
+
+    try:
+        import openai
+        import_status["OpenAI"] = "✅ Available"
+    except ImportError as e:
+        import_status["OpenAI"] = f"❌ Not available: {e}"
+
+    try:
+        import anthropic
+        import_status["Anthropic"] = "✅ Available"
+    except ImportError as e:
+        import_status["Anthropic"] = f"❌ Not available: {e}"
+
+    try:
+        import google.generativeai as genai
+        import_status["Gemini"] = "✅ Available"
+    except ImportError as e:
+        import_status["Gemini"] = f"❌ Not available: {e}"
+
+    return import_status
+
+def get_available_providers():
+    """Check which AI providers have API keys configured"""
+    providers = {}
+
+    # Test OpenAI
+    try:
+        if st.secrets.get("OPENAI_API_KEY"):
+            import openai
+            providers["OpenAI"] = {
+                "gpt-4o": "GPT-4o",
+                "gpt-4o-mini": "GPT-4o Mini",
+                "gpt-3.5-turbo": "GPT-3.5 Turbo"
+            }
+    except Exception as e:
+        st.sidebar.error(f"OpenAI setup error: {e}")
+
+    # Test Anthropic
+    try:
+        if st.secrets.get("ANTHROPIC_API_KEY"):
+            import anthropic
+            providers["Anthropic"] = {
+                "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
+                "claude-3-haiku-20240307": "Claude 3 Haiku"
+            }
+    except Exception as e:
+        st.sidebar.error(f"Anthropic setup error: {e}")
+
+    # Test Gemini
+    try:
+        if st.secrets.get("GEMINI_API_KEY"):
+            import google.generativeai as genai
+            providers["Gemini"] = {
+                "gemini-1.5-pro": "Gemini 1.5 Pro",
+                "gemini-1.5-flash": "Gemini 1.5 Flash"
+            }
+    except Exception as e:
+        st.sidebar.error(f"Gemini setup error: {e}")
+
+    return providers
+
 def fetch_job_details(url):
     """Fetch job title, summary, and description from Upwork job URL"""
+    if not REQUESTS_AVAILABLE or not BS4_AVAILABLE:
+        return {
+            'title': "Please enter manually",
+            'summary': "Please enter manually", 
+            'description': "Please enter manually"
+        }
+
     try:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Extract job title
-        job_title_element = soup.find('h2', class_='text-base flex-1') or soup.find('h1', class_='job-title')
-        job_title = job_title_element.get_text(strip=True) if job_title_element else "Job title not found"
+        # Try multiple selectors for job title
+        job_title = "Job title not found"
+        title_selectors = [
+            'h2.text-base.flex-1',
+            'h1.job-title',
+            'h1[data-test="job-title"]',
+            '.job-title',
+            'h1'
+        ]
 
-        # Extract summary  
-        summary_element = soup.find(class_='text-base-sm') or soup.find(class_='job-summary')
-        summary = summary_element.get_text(strip=True) if summary_element else "Summary not found"
+        for selector in title_selectors:
+            element = soup.select_one(selector)
+            if element:
+                job_title = element.get_text(strip=True)
+                break
 
-        # Extract job description
-        description_element = soup.find(class_='text-body-sm') or soup.find(class_='job-description')
-        description = description_element.get_text(strip=True) if description_element else "Description not found"
+        # Try multiple selectors for summary
+        summary = "Summary not found"
+        summary_selectors = [
+            '.text-base-sm',
+            '.job-summary',
+            '[data-test="job-summary"]'
+        ]
+
+        for selector in summary_selectors:
+            element = soup.select_one(selector)
+            if element:
+                summary = element.get_text(strip=True)
+                break
+
+        # Try multiple selectors for description
+        description = "Description not found"
+        desc_selectors = [
+            '.text-body-sm',
+            '.job-description',
+            '[data-test="job-description"]',
+            '.description'
+        ]
+
+        for selector in desc_selectors:
+            element = soup.select_one(selector)
+            if element:
+                description = element.get_text(strip=True)
+                break
 
         return {
             'title': job_title,
@@ -148,17 +225,15 @@ Description: {job_description}
 Please generate a cover letter following the above structure and rules."""
 
     prompt = base_prompt.format(
-        job_title=job_details['title'],
-        job_summary=job_details['summary'],
-        job_description=job_details['description']
+        job_title=job_details.get('title', ''),
+        job_summary=job_details.get('summary', ''),
+        job_description=job_details.get('description', '')
     )
 
     try:
         if ai_provider == "OpenAI":
-            client = get_openai_client()
-            if not client:
-                return "OpenAI client not available. Please check your API key."
-
+            import openai
+            client = openai.OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
@@ -168,10 +243,8 @@ Please generate a cover letter following the above structure and rules."""
             return response.choices[0].message.content
 
         elif ai_provider == "Anthropic":
-            client = get_anthropic_client()
-            if not client:
-                return "Anthropic client not available. Please check your API key."
-
+            import anthropic
+            client = anthropic.Anthropic(api_key=st.secrets.get("ANTHROPIC_API_KEY"))
             response = client.messages.create(
                 model=model_name,
                 max_tokens=500,
@@ -181,10 +254,8 @@ Please generate a cover letter following the above structure and rules."""
             return response.content[0].text
 
         elif ai_provider == "Gemini":
-            genai = get_gemini_client()
-            if not genai:
-                return "Gemini client not available. Please check your API key."
-
+            import google.generativeai as genai
+            genai.configure(api_key=st.secrets.get("GEMINI_API_KEY"))
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
             return response.text
@@ -192,48 +263,35 @@ Please generate a cover letter following the above structure and rules."""
     except Exception as e:
         return f"Error generating cover letter: {str(e)}"
 
-def get_available_providers():
-    """Check which AI providers have API keys configured"""
-    providers = {}
-
-    # Check OpenAI
-    if st.secrets.get("OPENAI_API_KEY"):
-        providers["OpenAI"] = {
-            "gpt-4o": "GPT-4o",
-            "gpt-4o-mini": "GPT-4o Mini", 
-            "gpt-4-turbo": "GPT-4 Turbo",
-            "gpt-3.5-turbo": "GPT-3.5 Turbo"
-        }
-
-    # Check Anthropic
-    if st.secrets.get("ANTHROPIC_API_KEY"):
-        providers["Anthropic"] = {
-            "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
-            "claude-3-5-haiku-20241022": "Claude 3.5 Haiku",
-            "claude-3-opus-20240229": "Claude 3 Opus"
-        }
-
-    # Check Gemini
-    if st.secrets.get("GEMINI_API_KEY"):
-        providers["Gemini"] = {
-            "gemini-1.5-pro": "Gemini 1.5 Pro",
-            "gemini-1.5-flash": "Gemini 1.5 Flash"
-        }
-
-    return providers
-
 def main():
     """Main app interface"""
+
+    # Debug section
+    with st.expander("🔧 Debug Info", expanded=False):
+        st.write("**Import Status:**")
+        import_status = test_imports()
+        for service, status in import_status.items():
+            st.write(f"- {service}: {status}")
+
+        st.write("**Secrets Available:**")
+        secrets_info = {
+            "OpenAI": "✅ Configured" if st.secrets.get("OPENAI_API_KEY") else "❌ Not configured",
+            "Anthropic": "✅ Configured" if st.secrets.get("ANTHROPIC_API_KEY") else "❌ Not configured", 
+            "Gemini": "✅ Configured" if st.secrets.get("GEMINI_API_KEY") else "❌ Not configured"
+        }
+        for service, status in secrets_info.items():
+            st.write(f"- {service}: {status}")
+
     # Check available providers
     available_providers = get_available_providers()
 
     if not available_providers:
         st.error("⚠️ No AI providers configured!")
-        st.info("Please add at least one API key in Streamlit secrets:")
+        st.info("Please add at least one API key in Streamlit Cloud secrets:")
         st.code("""
-OPENAI_API_KEY = "your_key_here"
-ANTHROPIC_API_KEY = "your_key_here"
-GEMINI_API_KEY = "your_key_here"
+OPENAI_API_KEY = "your_openai_key_here"
+ANTHROPIC_API_KEY = "your_anthropic_key_here"
+GEMINI_API_KEY = "your_gemini_key_here"
         """)
         st.stop()
 
@@ -246,7 +304,7 @@ GEMINI_API_KEY = "your_key_here"
 
         model_options = available_providers[selected_provider]
         selected_model = st.selectbox(
-            "Choose Model:", 
+            "Choose Model:",
             options=list(model_options.keys()),
             format_func=lambda x: model_options[x]
         )
@@ -285,20 +343,33 @@ GEMINI_API_KEY = "your_key_here"
             else:
                 st.warning("Please enter a job URL first.")
 
-        # Display and edit job details
+        # Manual entry option
+        st.markdown("### Or enter manually:")
+        manual_title = st.text_input("Job Title:", key="manual_title")
+        manual_summary = st.text_area("Job Summary:", height=100, key="manual_summary")
+        manual_description = st.text_area("Job Description:", height=200, key="manual_description")
+
+        if st.button("📝 Use Manual Entry"):
+            st.session_state.job_details = {
+                'title': manual_title,
+                'summary': manual_summary,
+                'description': manual_description
+            }
+            st.success("✅ Manual job details saved!")
+
+        # Display and edit job details if available
         if hasattr(st.session_state, 'job_details'):
             job_data = st.session_state.job_details
 
-            st.subheader("Job Information")
-
+            st.subheader("Current Job Information")
             with st.expander("📝 Edit Job Details", expanded=True):
-                edited_title = st.text_input("Job Title:", value=job_data.get('title', ''))
-                edited_summary = st.text_area("Summary:", value=job_data.get('summary', ''), height=100)
-                edited_description = st.text_area("Description:", value=job_data.get('description', ''), height=200)
+                edited_title = st.text_input("Job Title:", value=job_data.get('title', ''), key="edit_title")
+                edited_summary = st.text_area("Summary:", value=job_data.get('summary', ''), height=100, key="edit_summary")
+                edited_description = st.text_area("Description:", value=job_data.get('description', ''), height=200, key="edit_desc")
 
                 st.session_state.job_details = {
                     'title': edited_title,
-                    'summary': edited_summary, 
+                    'summary': edited_summary,
                     'description': edited_description
                 }
 
@@ -318,7 +389,7 @@ GEMINI_API_KEY = "your_key_here"
                     st.session_state.cover_letter = cover_letter
                     st.success("✅ Cover letter generated successfully!")
             else:
-                st.warning("Please fetch job details first.")
+                st.warning("Please enter job details first.")
 
         # Display generated cover letter
         if hasattr(st.session_state, 'cover_letter'):
@@ -340,11 +411,7 @@ GEMINI_API_KEY = "your_key_here"
 
     # Footer
     st.markdown("---")
-    st.markdown("""
-    <div style='text-align: center; color: #666;'>
-        <p>Built for professional Upwork freelancers | Follow the 7-step system for maximum impact</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("Built for professional Upwork freelancers | Follow the 7-step system for maximum impact")
 
 if __name__ == "__main__":
     main()
