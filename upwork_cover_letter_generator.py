@@ -27,26 +27,47 @@ st.markdown("Generate compelling, professional cover letters for Upwork job post
 def check_secret_exists(key):
     """Check if a secret exists in Streamlit Cloud"""
     try:
-        if hasattr(st.secrets, key):
-            value = getattr(st.secrets, key)
-            return value is not None and value != ""
-        elif key in st.secrets:
-            value = st.secrets[key]
-            return value is not None and value != ""
-        else:
-            return False
+        # Try different ways to access secrets based on how Streamlit stores them
+        # Check direct key
+        if hasattr(st.secrets, key) and getattr(st.secrets, key):
+            return True
+        # Check if it exists in secrets dict
+        if key in st.secrets and st.secrets[key]:
+            return True
+        # Check nested format [openai].api_key
+        if key == "OPENAI_API_KEY":
+            if hasattr(st.secrets, 'openai') and hasattr(st.secrets.openai, 'api_key'):
+                return bool(st.secrets.openai.api_key)
+        elif key == "ANTHROPIC_API_KEY":
+            if hasattr(st.secrets, 'anthropic') and hasattr(st.secrets.anthropic, 'api_key'):
+                return bool(st.secrets.anthropic.api_key)
+        elif key == "GEMINI_API_KEY":
+            if hasattr(st.secrets, 'gemini') and hasattr(st.secrets.gemini, 'api_key'):
+                return bool(st.secrets.gemini.api_key)
+        return False
     except Exception:
         return False
 
 def get_secret_value(key):
     """Get secret value from Streamlit Cloud"""
     try:
+        # Try different ways to access secrets
+        # Direct key
         if hasattr(st.secrets, key):
             return getattr(st.secrets, key)
-        elif key in st.secrets:
+        if key in st.secrets:
             return st.secrets[key]
-        else:
-            return None
+        # Nested format
+        if key == "OPENAI_API_KEY":
+            if hasattr(st.secrets, 'openai') and hasattr(st.secrets.openai, 'api_key'):
+                return st.secrets.openai.api_key
+        elif key == "ANTHROPIC_API_KEY":
+            if hasattr(st.secrets, 'anthropic') and hasattr(st.secrets.anthropic, 'api_key'):
+                return st.secrets.anthropic.api_key
+        elif key == "GEMINI_API_KEY":
+            if hasattr(st.secrets, 'gemini') and hasattr(st.secrets.gemini, 'api_key'):
+                return st.secrets.gemini.api_key
+        return None
     except Exception:
         return None
 
@@ -64,7 +85,7 @@ def get_available_providers():
                 "gpt-3.5-turbo": "GPT-3.5 Turbo"
             }
     except Exception:
-        pass  # Silently fail
+        pass
     
     # Test Anthropic
     try:
@@ -75,7 +96,7 @@ def get_available_providers():
                 "claude-3-haiku-20240307": "Claude 3 Haiku"
             }
     except Exception:
-        pass  # Silently fail
+        pass
     
     # Test Gemini
     try:
@@ -86,7 +107,15 @@ def get_available_providers():
                 "gemini-1.5-flash": "Gemini 1.5 Flash"
             }
     except Exception:
-        pass  # Silently fail
+        pass
+    
+    # Fallback - always provide at least OpenAI as an option
+    if not providers:
+        providers["OpenAI"] = {
+            "gpt-4o": "GPT-4o",
+            "gpt-4o-mini": "GPT-4o Mini",
+            "gpt-3.5-turbo": "GPT-3.5 Turbo"
+        }
     
     return providers
 
@@ -230,6 +259,8 @@ Please generate a cover letter following the above structure and rules."""
         if ai_provider == "OpenAI":
             import openai
             api_key = get_secret_value("OPENAI_API_KEY")
+            if not api_key:
+                return "OpenAI API key not configured. Please check your Streamlit secrets."
             client = openai.OpenAI(api_key=api_key)
             response = client.chat.completions.create(
                 model=model_name,
@@ -242,6 +273,8 @@ Please generate a cover letter following the above structure and rules."""
         elif ai_provider == "Anthropic":
             import anthropic
             api_key = get_secret_value("ANTHROPIC_API_KEY")
+            if not api_key:
+                return "Anthropic API key not configured. Please check your Streamlit secrets."
             client = anthropic.Anthropic(api_key=api_key)
             response = client.messages.create(
                 model=model_name,
@@ -254,56 +287,35 @@ Please generate a cover letter following the above structure and rules."""
         elif ai_provider == "Gemini":
             import google.generativeai as genai
             api_key = get_secret_value("GEMINI_API_KEY")
+            if not api_key:
+                return "Gemini API key not configured. Please check your Streamlit secrets."
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
             return response.text
             
     except Exception as e:
-        return f"Error generating cover letter: {str(e)}. Please check your API configuration."
+        return f"Error generating cover letter: {str(e)}"
 
 def main():
     """Main app interface"""
     
-    # Check available providers
+    # Get available providers - always show interface regardless
     available_providers = get_available_providers()
     
-    # Always show the interface, even if no API keys are configured
-    # Sidebar for AI model selection
+    # Sidebar for AI model selection - NO ERROR MESSAGES
     with st.sidebar:
         st.header("🤖 AI Model Selection")
         
-        if not available_providers:
-            st.error("⚠️ No AI providers configured!")
-            st.markdown("**Configure API keys in Streamlit Cloud:**")
-            st.markdown("1. Go to your app settings")
-            st.markdown("2. Click 'Secrets' tab")
-            st.markdown("3. Add your API keys:")
-            st.code("""
-OPENAI_API_KEY = "sk-proj-your_key"
-ANTHROPIC_API_KEY = "sk-ant-your_key"
-GEMINI_API_KEY = "AIzaSy-your_key"
-            """, language="toml")
-            
-            st.markdown("**Get API keys:**")
-            st.markdown("- [OpenAI API](https://platform.openai.com/api-keys)")
-            st.markdown("- [Anthropic API](https://console.anthropic.com/)")
-            st.markdown("- [Gemini API](https://aistudio.google.com/)")
-            
-            # Show disabled selections
-            st.selectbox("Choose AI Provider:", ["Please configure API keys first"], disabled=True)
-            st.selectbox("Choose Model:", ["Please configure API keys first"], disabled=True)
-            
-        else:
-            provider_options = list(available_providers.keys())
-            selected_provider = st.selectbox("Choose AI Provider:", provider_options)
-            
-            model_options = available_providers[selected_provider]
-            selected_model = st.selectbox(
-                "Choose Model:",
-                options=list(model_options.keys()),
-                format_func=lambda x: model_options[x]
-            )
+        provider_options = list(available_providers.keys())
+        selected_provider = st.selectbox("Choose AI Provider:", provider_options)
+        
+        model_options = available_providers[selected_provider]
+        selected_model = st.selectbox(
+            "Choose Model:",
+            options=list(model_options.keys()),
+            format_func=lambda x: model_options[x]
+        )
         
         st.markdown("---")
         st.markdown("### 📝 7-Step System")
@@ -326,7 +338,7 @@ GEMINI_API_KEY = "AIzaSy-your_key"
             - Be conversational, not formal
             """)
     
-    # Main content area - ALWAYS SHOW THIS
+    # Main content area - ALWAYS SHOW
     col1, col2 = st.columns([1, 1])
     
     with col1:
@@ -398,37 +410,32 @@ GEMINI_API_KEY = "AIzaSy-your_key"
     with col2:
         st.header("✍️ Generated Cover Letter")
         
-        # Generate button - show but disable if no API configured
-        if not available_providers:
-            st.button("🚀 Generate Cover Letter", type="primary", use_container_width=True, disabled=True,
-                     help="Please configure API keys in the sidebar first")
-            st.info("👈 Configure your API keys in the sidebar to enable cover letter generation")
-            
-        else:
-            if st.button("🚀 Generate Cover Letter", type="primary", use_container_width=True):
-                if hasattr(st.session_state, 'job_details'):
-                    job_data = st.session_state.job_details
-                    
-                    # Validate that we have meaningful job details
-                    if not job_data.get('title') and not job_data.get('description'):
-                        st.error("Please provide at least a job title and description before generating.")
-                    else:
-                        with st.spinner(f"Generating cover letter with {available_providers[selected_provider][selected_model]}..."):
-                            cover_letter = generate_cover_letter(
-                                st.session_state.job_details,
-                                selected_provider,
-                                selected_model
-                            )
-                            
-                        if cover_letter and not cover_letter.startswith("Error"):
-                            st.session_state.cover_letter = cover_letter
+        # Generate button - ALWAYS ENABLED, let the API call handle errors
+        if st.button("🚀 Generate Cover Letter", type="primary", use_container_width=True):
+            if hasattr(st.session_state, 'job_details'):
+                job_data = st.session_state.job_details
+                
+                # Validate that we have meaningful job details
+                if not job_data.get('title') and not job_data.get('description'):
+                    st.error("Please provide at least a job title and description before generating.")
+                else:
+                    with st.spinner(f"Generating cover letter with {available_providers[selected_provider][selected_model]}..."):
+                        cover_letter = generate_cover_letter(
+                            st.session_state.job_details,
+                            selected_provider,
+                            selected_model
+                        )
+                        
+                    if cover_letter:
+                        st.session_state.cover_letter = cover_letter
+                        if not cover_letter.startswith("Error") and not cover_letter.endswith("secrets."):
                             st.success("✅ Cover letter generated successfully!")
                         else:
-                            st.error(f"Failed to generate cover letter: {cover_letter}")
-                else:
-                    st.warning("Please enter job details first using one of the options on the left.")
+                            st.warning("⚠️ " + cover_letter)
+            else:
+                st.warning("Please enter job details first using one of the options on the left.")
         
-        # Display generated cover letter - ALWAYS SHOW THIS SECTION
+        # Display generated cover letter or placeholder
         if hasattr(st.session_state, 'cover_letter'):
             st.subheader("📝 Your Cover Letter")
             
