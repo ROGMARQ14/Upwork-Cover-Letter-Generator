@@ -89,9 +89,6 @@ I’m not an agency... I dedicate much personal attention to each client... I pr
 - Almost 100 projects and over 1,300+ hours invested
 """
 
-# This is the old, flawed 7-step system description. We will use a more direct prompt now.
-# seven_step_system = "..." # Removed for clarity.
-
 # --- API Key Configuration ---
 
 # Try to get keys from Streamlit secrets
@@ -178,39 +175,44 @@ if not google_api_key:
     if google_api_key:
         genai.configure(api_key=google_api_key)
 
+st.sidebar.header("🤖 AI Model Selection")
+model_provider = st.sidebar.selectbox("Choose AI Provider", ["Google", "OpenAI", "Anthropic"])
+
+# --- UPDATED MODEL LISTS ---
+# The keys are the actual model IDs for the API calls.
+# The values in model_display_names are what the user sees in the UI.
+models = {
+    "OpenAI": {
+        "gpt-4o": "GPT-5 (via gpt-4o)",
+        "gpt-4o-mini": "GPT-5 mini (via gpt-4o-mini)",
+        "gpt-4-turbo": "OpenAI o4 (via gpt-4-turbo)",
+    },
+    "Anthropic": {
+        "claude-3-opus-20240229": "Claude Opus 4.1 (via Claude 3 Opus)",
+        "claude-3-sonnet-20240229": "Claude Sonnet 4 (via Claude 3 Sonnet)",
+    },
+    "Google": {
+        "gemini-1.5-pro-latest": "Gemini 2.5 Pro (via 1.5 Pro)",
+        "gemini-1.5-flash-latest": "Gemini 2.5 Flash (via 1.5 Flash)",
+    }
+}
+
+# The user will see their requested names, but the backend will use the correct, working model ID.
+selected_model_display_name = st.sidebar.selectbox(
+    "Select a Model",
+    options=list(models[model_provider].values())
+)
+
+# Find the actual model ID corresponding to the selected display name
+selected_model_key = [key for key, value in models[model_provider].items() if value == selected_model_display_name][0]
+
+
 col1, col2 = st.columns(2)
 
 with col1:
     st.header("📋 Job Details")
     job_title = st.text_input("Job Listing Title")
     job_description = st.text_area("Job Description", height=300)
-
-    st.header("🤖 AI Model Selection")
-    model_provider = st.selectbox("Choose AI Provider", ["Google", "OpenAI", "Anthropic"])
-
-    models = {
-        "OpenAI": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"], # Placeholder for future models
-        "Anthropic": ["claude-3-opus-20240229", "claude-3-sonnet-20240229"],
-        "Google": ["gemini-1.5-pro-latest", "gemini-1.5-flash-latest"] # Placeholder for future models
-    }
-
-    model_display_names = {
-        "gpt-4o": "OpenAI: GPT-4o",
-        "gpt-4o-mini": "OpenAI: GPT-4o Mini",
-        "gpt-4-turbo": "OpenAI: GPT-4 Turbo",
-        "gpt-3.5-turbo": "OpenAI: GPT-3.5 Turbo",
-        "claude-3-opus-20240229": "Anthropic: Claude 3 Opus",
-        "claude-3-sonnet-20240229": "Anthropic: Claude 3 Sonnet",
-        "gemini-1.5-pro-latest": "Google: Gemini 1.5 Pro",
-        "gemini-1.5-flash-latest": "Google: Gemini 1.5 Flash"
-    }
-
-    selected_model_key = st.selectbox(
-        "Select a Model",
-        options=models[model_provider],
-        format_func=lambda x: model_display_names.get(x, x)
-    )
-
     generate_button = st.button("✨ Generate Cover Letter", type="primary")
 
 with col2:
@@ -219,7 +221,7 @@ with col2:
         if not job_title or not job_description:
             st.warning("Please provide both the Job Title and Job Description.")
         else:
-            with st.spinner(f"Crafting your cover letter with {model_display_names.get(selected_model_key, selected_model_key)}..."):
+            with st.spinner(f"Crafting your cover letter with {selected_model_display_name}..."):
                 # --- NEW, IMPROVED PROMPT ---
                 prompt = f"""
                 You are an expert Upwork proposal writer, acting as a consultant. Your goal is to write a cover letter that is **100% client-focused**. It should feel like a direct, thoughtful response to their specific needs, not a generic sales pitch.
