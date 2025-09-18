@@ -1,207 +1,47 @@
-# Upwork Cover Letter Generator 📝
+Upwork Cover Letter Generator
+This Streamlit application generates high-quality, professional cover letter proposals for Upwork job listings. It uses your detailed professional profile and a proven 7-step system to craft personalized and effective cover letters using various state-of-the-art AI models.
 
-A powerful Streamlit app that generates compelling, professional cover letters for Upwork job postings using AI. Built specifically for freelancers who want to follow proven proposal writing strategies.
+How it Works
+The app takes a job title and job description as input, combines it with your pre-defined professional background, and uses an AI model of your choice to generate a compelling cover letter. The goal is to increase your chances of getting noticed and hired on Upwork.
 
-## Features ✨
+Setup and Installation
+Clone the repository:
 
-- **URL-based Job Extraction**: Simply paste an Upwork job URL to automatically extract job title, summary, and description
-- **Multi-AI Provider Support**: Choose from OpenAI, Anthropic, or Google Gemini models
-- **7-Step Proven Framework**: Based on the proven Upwork proposal writing system
-- **Smart Emoji Integration**: Professional emoji usage that enhances readability
-- **Word Count Tracking**: Keeps your proposals within the optimal 250-word limit
-- **Editable Job Details**: Manually edit extracted job information if needed
-- **Manual Entry Option**: Backup method if URL fetching fails
-- **Debug Section**: Shows API status and configuration details
+git clone <repository-url>
+cd <repository-directory>
 
-## Supported AI Models 🤖
+Install the dependencies:
+Make sure you have Python 3.7+ installed. Then, install the required packages using pip:
 
-### OpenAI
-- GPT-4o
-- GPT-4o Mini
-- GPT-3.5 Turbo
-
-### Anthropic
-- Claude 3.5 Sonnet
-- Claude 3 Haiku
-
-### Google Gemini
-- Gemini 1.5 Pro
-- Gemini 1.5 Flash
-
-## Installation & Setup 🚀
-
-### 1. Clone or Download
-Download the files to your local machine:
-- `upwork_cover_letter_generator.py`
-- `requirements.txt`
-- `.streamlit/config.toml`
-- `.streamlit/secrets.toml` (template)
-
-### 2. Install Dependencies
-```bash
 pip install -r requirements.txt
-```
 
-### 3. Set Up API Keys
+Set up Streamlit Secrets:
+This app is designed to work with Streamlit Cloud and uses Streamlit Secrets for API key management. You'll need to add your API keys to your Streamlit Cloud workspace.
 
-#### For Local Development:
-Create `.streamlit/secrets.toml` file:
-```toml
-OPENAI_API_KEY = "your_openai_api_key_here"
-ANTHROPIC_API_KEY = "your_anthropic_api_key_here"
-GEMINI_API_KEY = "your_gemini_api_key_here"
-```
+Create a secrets.toml file in a .streamlit directory in your project's root folder for local development.
 
-#### For Streamlit Cloud:
-Add these in the Streamlit Cloud secrets tab:
-```toml
-OPENAI_API_KEY = "sk-proj-xxxxxxxxxxxxxxxxxxxxx"
-ANTHROPIC_API_KEY = "sk-ant-xxxxxxxxxxxxxxxxxxxxx"
-GEMINI_API_KEY = "AIzaSyxxxxxxxxxxxxxxxxxxxxx"
-```
+Your secrets.toml file should look like this:
 
-### 4. Run the Application
-```bash
-streamlit run upwork_cover_letter_generator.py
-```
+# .streamlit/secrets.toml
 
-## How to Use 📋
+OPENAI_API_KEY = "your-openai-api-key"
+ANTHROPIC_API_KEY = "your-anthropic-api-key"
+GOOGLE_API_KEY = "your-google-api-key"
 
-1. **Enter Job URL**: Paste the Upwork job posting URL
-2. **Fetch Details**: Click "Fetch Job Details" to automatically extract job information
-3. **Edit if Needed**: Modify the extracted job details or use manual entry
-4. **Choose AI Model**: Select your preferred AI provider and model from the sidebar
-5. **Generate**: Click "Generate Cover Letter" to create your proposal
-6. **Copy & Use**: Copy the generated cover letter and paste it into your Upwork proposal
+When deploying on Streamlit Cloud, you will copy these key-value pairs into the "Secrets" section of your app's settings.
 
-## The 7-Step System 📈
+Run the application:
+To run the app locally, use the following command:
 
-This app follows a proven 7-step framework for writing effective Upwork proposals:
+streamlit run app.py
 
-1. **Hook & Twist** - Grab attention and show understanding of deeper business impact
-2. **Save the Day** - Position yourself as the solution they need
-3. **Social Proof** - Share one relevant achievement with numbers if possible
-4. **Results Preview** - Paint a picture of successful outcomes
-5. **Clear CTA** - Tell them exactly what the next step should be
-6. **P.S.** - Add unexpected value to create excitement
+Features
+Personalized Cover Letters: Generates cover letters tailored to specific job listings.
 
-## Key Features & Rules 🎯
+Multi-model Support: Choose from a variety of powerful AI models from OpenAI, Anthropic, and Google.
 
-- **250-word maximum** for optimal readability
-- **Client-focused approach** (90% client needs, 10% your credentials)
-- **Strategic emoji usage** (3-5 professional emojis total)
-- **Conversational tone** (friendly but professional)
-- **No rate discussions** (unless specifically requested in the job post)
+Secure API Key Management: Uses Streamlit Secrets to keep your API keys safe.
 
-## Deployment to Streamlit Cloud 🌐
+Based on a Proven System: Incorporates a 7-step proposal system for maximum impact.
 
-### 1. Prepare Your Repository
-- Push your code to GitHub
-- Ensure all files are in the root directory:
-  - `upwork_cover_letter_generator.py`
-  - `requirements.txt`
-  - `.streamlit/config.toml`
-
-### 2. Deploy on Streamlit Cloud
-1. Visit [share.streamlit.io](https://share.streamlit.io)
-2. Connect your GitHub account
-3. Select your repository
-4. Set the main file path: `upwork_cover_letter_generator.py`
-5. Click "Deploy"
-
-### 3. Configure Secrets
-1. Go to your app settings in Streamlit Cloud
-2. Navigate to the "Secrets" tab
-3. Add your API keys exactly as shown:
-```toml
-OPENAI_API_KEY = "your_key_here"
-ANTHROPIC_API_KEY = "your_key_here"
-GEMINI_API_KEY = "your_key_here"
-```
-
-## Getting API Keys 🔑
-
-### OpenAI
-1. Visit [platform.openai.com](https://platform.openai.com)
-2. Sign up/login and go to API keys
-3. Create a new secret key (starts with `sk-proj-`)
-
-### Anthropic
-1. Visit [console.anthropic.com](https://console.anthropic.com)
-2. Sign up/login and navigate to API keys
-3. Generate a new API key (starts with `sk-ant-`)
-
-### Google Gemini
-1. Visit [aistudio.google.com](https://aistudio.google.com)
-2. Sign in with Google account
-3. Create an API key (starts with `AIzaSy`)
-
-## Troubleshooting 🔧
-
-### Common Issues:
-
-**"No AI providers configured"**
-- Make sure at least one API key is set in your secrets
-- Check the debug section to verify API key detection
-- Verify the key names match exactly (case-sensitive)
-
-**"Error fetching job details"**
-- Ensure the URL is a valid Upwork job posting
-- Some job postings may have different HTML structures
-- Use the manual entry option as a backup
-
-**API Errors**
-- OpenAI: Check your usage limits and billing
-- Anthropic: Ensure you have sufficient credits
-- Gemini: Verify your quota hasn't been exceeded
-
-**Secrets Not Detected**
-- In Streamlit Cloud, make sure API keys are added in the Secrets tab
-- Check that there are no extra spaces or quotes
-- Use the debug section to verify secret detection
-
-## Tips for Best Results 💡
-
-1. **Use specific job URLs**: Direct job posting URLs work best
-2. **Review extracted details**: Always check and refine the extracted job information
-3. **Choose the right model**: Different models have different strengths
-4. **Stay under 250 words**: Longer proposals perform worse on Upwork
-5. **Personalize further**: Use the generated letter as a base, then add personal touches
-6. **Check the debug section**: Use it to troubleshoot any configuration issues
-
-## Debug Features 🔍
-
-The app includes a debug section that shows:
-- ✅ Which AI libraries are available
-- ✅ Which API keys are configured
-- ✅ First 10 characters of each API key for verification
-- ✅ Import status for all dependencies
-
-## File Structure 📁
-
-```
-upwork-cover-letter-generator/
-├── upwork_cover_letter_generator.py  # Main application
-├── requirements.txt                   # Python dependencies
-├── .streamlit/
-│   ├── config.toml                   # Streamlit configuration
-│   └── secrets.toml                  # API keys (template)
-├── .gitignore                        # Git ignore file
-└── README.md                         # This file
-```
-
-## Support & Feedback 📞
-
-If you encounter issues:
-1. Check the debug section in the app
-2. Verify your API keys are correctly configured
-3. Review the troubleshooting section above
-4. Ensure all dependencies are properly installed
-
-## License 📄
-
-This project is designed for professional freelancers using Upwork. Please use responsibly and in accordance with Upwork's terms of service.
-
----
-
-**Built for professional Upwork freelancers | Follow the 7-step system for maximum impact**
+Includes Your Professional Profile: Automatically injects your detailed skills, experience, and accolades into the generation process.
